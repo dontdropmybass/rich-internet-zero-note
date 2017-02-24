@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>ZeroNote</title>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <link rel="stylesheet" href="css/jquery-ui.min.css" />
+  <link rel="stylesheet" href="css/jquery-ui.structure.min.css" />
+  <link rel="stylesheet" href="css/jquery-ui.theme.min.css" />
+  <link rel="stylesheet" href="http://fonts.googleapis.com/icon?family=Material+Icons" />
+  <script src="js/jquery-3.1.1.min.js"></script>
+  <script src="js/jquery-ui.min.js"></script>
+  <script src="js/constants.js"></script>
+  <script src="https://js.live.net/v5.0/wl.js"></script>
+  <script src="https://secure.aadcdn.microsoftonline-p.com/lib/1.0.12/js/adal.min.js"></script>
+  <script src="js/default.js"></script>
+  <link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+  <div id="dialog" style="display:none">Alexander Cochrane</div>
+  <div class="container">
+    <label id="info"></label>
+    <div id="zeronote" style="display:none;">
+      <div class="topbar">
+        <div id="signin"></div>
+        <div id="noteName">Note Title Here</div>
+        <div class="toolbar">
+          <a id="add" href="#"><i class="material-icons">add</i></a>
+          <a id="save" href="#"><i class="material-icons">save</i></a>
+          <a id="delete" href="#"><i class="material-icons">delete</i></a>
+          <a id="about" href="#" onclick="$('#dialog').dialog();"><i class="material-icons">assignment_ind</i></a>
+        </div>
+      </div>
+      <div class="main">
+        <div class="listbar">
+          <div id="searchbox"><input type="text" name="search" id="search" /></div>
+          <div id="listOfFiles">
+          </div>
+        </div>
+        <div class="texteditor">
+          <textarea id="wowBigTextBox"></textarea>
+        </div>
+      </div>
+    </div>
+  </div>
+  <script>
+  var notes;
+            WL.Event.subscribe("auth.login", onLogin);
+            WL.init({
+                client_id: APP_CLIENT_ID,
+                redirect_uri: REDIRECT_URL,
+                scope: "wl.signin office.onenote_update",
+                response_type: "token"
+            });
+            WL.ui({
+                name: "signin",
+                element: "signin"
+            });
+            function onLogin (session) {
+                if (!session.error) {
+                    WL.api({
+                        path: "me",
+                        method: "GET"
+                    }).then(
+                        function (response) {
+                          $('#zeronote').show();
+                          $.ajax({
+                            url: "https://www.onenote.com/api/v1.0/me/notes/pages",
+                            type: "GET",
+                            beforeSend: function(xhr){
+                              xhr.setRequestHeader('Authorization','Bearer ' + session.session.access_token);
+                            },
+                            success: function(data) {
+                              console.log(data);
+                              debugger;
+                              if (data.value != null) {
+                                notes = data;
+                                for(var i = 0; i < data.value.length; i++){
+                                  console.log(i);
+                                  console.log(data.value[i])
+                                  $("#listOfFiles").append("<div class='note'><a href='#' onclick='showNote("+i+")'>"
+                                                  + data.value[i].title + "</a></div>");
+                                }
+                              }
+                            },
+                            error: function(response) {
+
+                            }
+                          });
+
+                            /*document.getElementById("info").innerText =
+                                "Hello, " + response.first_name + " " + response.last_name + "!";*/
+                        },
+                        function (responseFailed) {
+                          $('#zeronote').hide();
+                            document.getElementById("info").innerText =
+                                "Error calling API: " + responseFailed.error.message;
+                        }
+                    );
+                }
+                else {
+                  $('#zeronote').hide();
+                    document.getElementById("info").innerText =
+                        "Error signing in: " + session.error_description;
+                }
+            }
+        </script>
+</body>
+<footer>
+</footer>
+</html>
