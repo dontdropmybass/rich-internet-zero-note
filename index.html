@@ -107,7 +107,6 @@
                       xhr.setRequestHeader('Authorization','Bearer ' + bearer);
                     },
                     success: function(data) {
-                      spinner();
                       $("#noteName").text(title);
                       var searchQuery = $("#search").val();
                       var ajaxUrl = "https://www.onenote.com/api/v1.0/me/notes/pages";
@@ -224,6 +223,7 @@
                 alert("Error!!!");
               }
             });
+            $(this).dialog("close");
           },
           "Cancel": function() {
             $(this).dialog("close");
@@ -250,15 +250,70 @@
         spinner(false);
         $("#save").click(function(){saveNote(notes[noteID])});
         $("#delete").click(function () {
-          $.ajax({
-            url: notes[noteID].self,
-            type: "DELETE",
-            beforeSend: function(xhr){xhr.setRequestHeader('Authorization', 'Bearer ' + bearer);},
-            success: function(data) {
-
+          $("<div>Are you sure you want to delete this note?</div>").dialog({
+            autoOpen: true,
+            close: function () {
+                $(this).dialog("destroy");
             },
-            error: function(){
-              alert("Error deleting Note");
+            title: "Title",
+            buttons: {
+              "Ok": function() {
+                spinner();
+                $(this).dialog("close");
+                $.ajax({
+                  url: notes[noteID].self,
+                  type: "DELETE",
+                  beforeSend: function(xhr){xhr.setRequestHeader('Authorization', 'Bearer ' + bearer);},
+                  success: function(data) {
+                    $("#save").css("color","lightgrey");
+                    $("#save").click(function(){});
+                    var searchQuery = $("#search").val();
+                    var ajaxUrl = "https://www.onenote.com/api/v1.0/me/notes/pages";
+                    if (searchQuery != "") {
+                      ajaxUrl += "?search=" + searchQuery;
+                    }
+                    $.ajax({
+                      url: ajaxUrl,
+                      type: "GET",
+                      beforeSend: function(xhr) {
+                        xhr.setRequestHeader('Authorization','Bearer ' + bearer);
+                      },
+                      success: function(data) {
+                        spinner(false);
+                        if (data.value != null) {
+                          notes = data.value;
+                          $(".note").remove();
+                          for(var i = 0; i < data.value.length; i++){
+                            console.log(i);
+                            console.log(data.value[i])
+                            $("#listOfFiles").append("<div class='note'><a href='#' onclick='showNote("+i+")'>"
+                                                    + data.value[i].title + "</a></div>");
+                          }
+                        }
+                      },
+                      error: function(e) {
+                        spinner(false);
+                        alert("Errrror");
+                        console.log(e);
+                      }
+                    });
+                    $("<div>Note Deleted</div>").dialog();
+                    $("#delete").css("color","lightgrey");
+                    $("#delete").click(function(){});
+                    $("#noteName").text("");
+                    tinymce.activeEditor.setContent("");
+
+                  },
+                  error: function(e){
+                    spinner(false);
+                    console.log(e);
+                    alert("Error deleting Note");
+                  }
+                });
+              },
+              "No": function() {
+                $(this).dialog("close");
+              }
             }
           });
         });
@@ -266,7 +321,6 @@
       error: function(){
         spinner(false);
         alert("Error retrieving note data");
-        $("#wowBigTextBox").prop("readonly","readonly");
         $("#save").css("color","black");
         $("#delete").css("color","lightgrey");
         $("#save").click(function(){saveNew()});
