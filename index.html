@@ -23,7 +23,7 @@
     <label id="info"></label>
     <div id="zeronote" style="display:none;">
       <div class="topbar">
-        <input id="noteName" placeholder="Note Title Goes Here"/>
+        <h1 id="noteName"></h1>
         <div class="toolbar">
           <a id="add" href="#"><i class="material-icons">add</i></a>
           <a id="save" href="#"><i class="material-icons">save</i></a>
@@ -57,13 +57,10 @@
       </div>
     </div>
   </div>
-  <div id="deleteDialog" hidden>Note Successfully Deleted!</div>
   <div id="dialog" hidden>Alexander Cochrane</div>
-  <div id="otherDialog" hidden></div>
   <script>
   var bearer;
   var notes;
-
   function spinner(b = true) {
     if (b) {
       $(".texteditor").hide();
@@ -76,133 +73,164 @@
   }
 
   function saveNote(note) {
-    if ($("#noteName").val() == null || $("#noteName").val() == "") {
-      alert("Cannot save a note with an empty name");
-      return;
-    }
-    var title = $("#noteName").val();
-    var body = tinymce.activeEditor.getContent();
-    var createdTime = note.createdTime;
-    // Delete the note and recreate
-    spinner();
-    $.ajax({
-      url: note.self,
-      type: "DELETE",
-      beforeSend: function(xhr){xhr.setRequestHeader('Authorization', 'Bearer ' + bearer);},
-      success: function(data) {
-        // Recreate the note with the old timestamp
-        $.ajax({
-          url: "https://www.onenote.com/api/v1.0/me/notes/pages",
-          type: "POST",
-          contentType: "application/xhtml+xml",
-          data: "<!DOCTYPE html><html><head><title>" + title + "</title>"
-              + "<meta name='created' content='" + createdTime + "'/></head>"
-              + "<body>" + body + "</body></html>",
-          beforeSend: function(xhr) {
-            xhr.setRequestHeader('Authorization','Bearer ' + bearer);
-          },
-          success: function(data) {
-            spinner();
-            var searchQuery = $("#search").val();
-            var ajaxUrl = "https://www.onenote.com/api/v1.0/me/notes/pages";
-            if (searchQuery != "") {
-              ajaxUrl += "?search=" + searchQuery;
+    $("<div>Enter name:<input id='dialogNameBox' type='text'/></div>").dialog({
+        autoOpen: true,
+        close: function () {
+            $(this).dialog("destroy");
+        },
+        title: "Title",
+        buttons: {
+            "Ok": function() {
+              if ($("#dialogNameBox").val() == null || $("#dialogNameBox").val() == "") {
+                alert("Cannot save a note with an empty name");
+                return;
+              }
+              var title = $("#dialogNameBox").val();
+              var body = tinymce.activeEditor.getContent();
+              var createdTime = note.createdTime;
+              // Delete the note and recreate
+              spinner();
+              $.ajax({
+                url: note.self,
+                type: "DELETE",
+                beforeSend: function(xhr){xhr.setRequestHeader('Authorization', 'Bearer ' + bearer);},
+                success: function(data) {
+                  // Recreate the note with the old timestamp
+                  $.ajax({
+                    url: "https://www.onenote.com/api/v1.0/me/notes/pages",
+                    type: "POST",
+                    contentType: "application/xhtml+xml",
+                    data: "<!DOCTYPE html><html><head><title>" + title + "</title>"
+                        + "<meta name='created' content='" + createdTime + "'/></head>"
+                        + "<body>" + body + "</body></html>",
+                    beforeSend: function(xhr) {
+                      xhr.setRequestHeader('Authorization','Bearer ' + bearer);
+                    },
+                    success: function(data) {
+                      spinner();
+                      $("#noteName").text(title);
+                      var searchQuery = $("#search").val();
+                      var ajaxUrl = "https://www.onenote.com/api/v1.0/me/notes/pages";
+                      if (searchQuery != "") {
+                        ajaxUrl += "?search=" + searchQuery;
+                      }
+                      $.ajax({
+                        url: ajaxUrl,
+                        type: "GET",
+                        beforeSend: function(xhr) {
+                          xhr.setRequestHeader('Authorization','Bearer ' + bearer);
+                        },
+                        success: function(data) {
+                          spinner(false);
+                          if (data.value != null) {
+                            notes = data.value;
+                            $(".note").remove();
+                            for(var i = 0; i < data.value.length; i++){
+                              console.log(i);
+                              console.log(data.value[i])
+                              $("#listOfFiles").append("<div class='note'><a href='#' onclick='showNote("+i+")'>"
+                                                      + data.value[i].title + "</a></div>");
+                            }
+                          }
+                        },
+                        error: function(e) {
+                          spinner(false);
+                          alert("Errrror");
+                          console.log(e);
+                        }
+                      });
+                    },
+                    error: function(e) {
+                      spinner(false);
+                      console.log(e);
+                      alert("Error!!!");
+                    }
+                  });
+                },
+                error: function(e){
+                  spinner(false);
+                  console.log(e);
+                  alert("Error");
+                }
+              });
+              $(this).dialog("close");
+            },
+            "Cancel": function() {
+              $(this).dialog("close");
             }
+        }
+    });
+
+  }
+
+  function saveNew() {
+    $("<div>Enter name:<input id='dialogNameBox' type='text'/></div>").dialog({
+      autoOpen: true,
+      close: function () {
+          $(this).dialog("destroy");
+      },
+      title: "Title",
+      buttons: {
+          "Ok": function() {
+            if ($("#dialogNameBox").val() == null || $("#dialogNameBox").val() == "") {
+              alert("Cannot save a note with an empty name");
+              return;
+            }
+            var title = $("#dialogNameBox").val();
+            var body = tinymce.activeEditor.getContent();
             $.ajax({
-              url: ajaxUrl,
-              type: "GET",
+              url: "https://www.onenote.com/api/v1.0/me/notes/pages",
+              type: "POST",
+              contentType: "application/xhtml+xml",
+              data: "<!DOCTYPE html><html><head><title>" + title + "</title>"
+                  + "<meta name='created' content='" + new Date().toISOString() + "'/></head>"
+                  + "<body>" + body + "</body></html>",
               beforeSend: function(xhr) {
                 xhr.setRequestHeader('Authorization','Bearer ' + bearer);
               },
               success: function(data) {
-                spinner(false);
-                if (data.value != null) {
-                  notes = data.value;
-                  $(".note").remove();
-                  for(var i = 0; i < data.value.length; i++){
-                    console.log(i);
-                    console.log(data.value[i])
-                    $("#listOfFiles").append("<div class='note'><a href='#' onclick='showNote("+i+")'>"
-                                            + data.value[i].title + "</a></div>");
-                  }
+                spinner();
+                $("#noteName").text(title);
+                var searchQuery = $("#search").val();
+                var ajaxUrl = "https://www.onenote.com/api/v1.0/me/notes/pages";
+                if (searchQuery != "") {
+                  ajaxUrl += "?search=" + searchQuery;
                 }
+                $.ajax({
+                  url: ajaxUrl,
+                  type: "GET",
+                  beforeSend: function(xhr) {
+                    xhr.setRequestHeader('Authorization','Bearer ' + bearer);
+                  },
+                  success: function(data) {
+                    spinner(false);
+                    $("#noteName").text(title);
+                    if (data.value != null) {
+                      notes = data.value;
+                      $(".note").remove();
+                      for(var i = 0; i < data.value.length; i++){
+                        $("#listOfFiles").append("<div class='note'><a href='#' onclick='showNote("+i+")'>"
+                                                + data.value[i].title + "</a></div>");
+                      }
+                    }
+                  },
+                  error: function(e) {
+                    spinner(false);
+                    alert(e);
+                  }
+                });
               },
               error: function(e) {
-                spinner(false);
-                alert("Errrror");
-                console.log(e);
+                alert("Error!!!");
               }
             });
           },
-          error: function(e) {
-            spinner(false);
-            console.log(e);
-            alert("Error!!!");
+          "Cancel": function() {
+            $(this).dialog("close");
           }
-        });
-      },
-      error: function(e){
-        spinner(false);
-        console.log(e);
-        alert("Error");
-      }
-    });
-  }
-
-  function saveNew() {
-    if ($("#noteName").val() == null || $("#noteName").val() == "") {
-      alert("Cannot save a note with an empty name");
-      return;
-    }
-    var title = $("#noteName").val();
-    var body = tinymce.activeEditor.getContent();
-    $.ajax({
-      url: "https://www.onenote.com/api/v1.0/me/notes/pages",
-      type: "POST",
-      contentType: "application/xhtml+xml",
-      data: "<!DOCTYPE html><html><head><title>" + title + "</title>"
-          + "<meta name='created' content='" + new Date().toISOString() + "'/></head>"
-          + "<body>" + body + "</body></html>",
-      beforeSend: function(xhr) {
-        xhr.setRequestHeader('Authorization','Bearer ' + bearer);
-      },
-      success: function(data) {
-        alert("Great Success!");
-        spinner();
-        var searchQuery = $("#search").val();
-        var ajaxUrl = "https://www.onenote.com/api/v1.0/me/notes/pages";
-        if (searchQuery != "") {
-          ajaxUrl += "?search=" + searchQuery;
         }
-        $.ajax({
-          url: ajaxUrl,
-          type: "GET",
-          beforeSend: function(xhr) {
-            xhr.setRequestHeader('Authorization','Bearer ' + bearer);
-          },
-          success: function(data) {
-            spinner(false);
-            if (data.value != null) {
-              notes = data.value;
-              $(".note").remove();
-              for(var i = 0; i < data.value.length; i++){
-                console.log(i);
-                console.log(data.value[i])
-                $("#listOfFiles").append("<div class='note'><a href='#' onclick='showNote("+i+")'>"
-                                        + data.value[i].title + "</a></div>");
-              }
-            }
-          },
-          error: function(e) {
-            spinner(false);
-            alert(e);
-          }
-        });
-      },
-      error: function(e) {
-        alert("Error!!!");
-      }
     });
+
   }
 
   function showNote(noteID) {
@@ -216,7 +244,7 @@
         currentTitle = ($(data).filter("title").text() == null || $(data).filter("title").text() == "") ? "Untitled" : $(data).filter("title").text();
         var content = parser.parseFromString(data, "text/html").querySelector("body").innerHTML;
         tinymce.activeEditor.setContent(content);
-        $("#noteName").val(currentTitle);
+        $("#noteName").text(currentTitle);
         $("#save").css("color","black");
         $("#delete").css("color","black");
         spinner(false);
@@ -227,7 +255,7 @@
             type: "DELETE",
             beforeSend: function(xhr){xhr.setRequestHeader('Authorization', 'Bearer ' + bearer);},
             success: function(data) {
-              $("#deleteDialog").dialog();
+
             },
             error: function(){
               alert("Error deleting Note");
@@ -293,7 +321,7 @@
                               $("#add").click(function () {
                                 currentNote = null;
                                 currentTitle = "";
-                                $("#noteName").val("");
+                                $("#noteName").text("");
                                 tinymce.activeEditor.setContent("");
                                 $("#save").css("color","black");
                                 $("#delete").css("color","lightgrey");
@@ -302,6 +330,8 @@
                               });
                               $("#searchButton").click(function () {
                                 spinner();
+                                $("#noteName").text("");
+                                tinymce.activeEditor.setContent("");
                                 var searchQuery = $("#search").val();
                                 var ajaxUrl = "https://www.onenote.com/api/v1.0/me/notes/pages";
                                 if (searchQuery != "") {
